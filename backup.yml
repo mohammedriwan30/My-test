@@ -12,11 +12,17 @@
         group: root
         mode: '0700'
 
+    # --- FIX: Uses native shell tools to guarantee execution ---
     - name: Compress /etc directory into a timestamped tar archive
-      ansible.builtin.archive:
-        path: /etc
-        dest: "/root/backup/etc_backup_{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
-        format: gz
+      ansible.builtin.shell: "tar -czf /root/backup/etc_backup_$(date +%Y%m%dT%H%M%S).tar.gz -C / etc"
+      register: tar_output
+      changed_when: tar_output.rc == 0
+
+    - name: Enforce strict permissions on the generated archive file
+      ansible.builtin.file:
+        path: /root/backup/
+        state: directory
+        recurse: yes
         owner: root
         group: root
         mode: '0600'
