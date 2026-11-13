@@ -3,7 +3,6 @@
   hosts: all
   become: yes
   vars:
-    # BIND DEFINITION VALUE: Set to 'nginx' or 'httpd' (Apache) as desired
     web_server_package: nginx
 
   tasks:
@@ -25,8 +24,18 @@
         state: started
         enabled: yes
 
+    # --- FIX ADDED HERE ---
+    # This ensures the collection containing firewalld is present on the control node
+    - name: Ensure ansible.posix collection is installed locally
+      delegate_to: localhost
+      run_once: true
+      become: no
+      ansible.builtin.command: ansible-galaxy collection install ansible.posix
+
+    # --- FIX ADDED HERE ---
+    # Changed from 'firewalld:' to 'ansible.posix.firewalld:'
     - name: Configure local firewalld rules for web traffic
-      firewalld:
+      ansible.posix.firewalld:
         service: http
         permanent: yes
         state: enabled
