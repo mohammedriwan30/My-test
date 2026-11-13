@@ -1,46 +1,78 @@
 ---
-- name: Deploy Apache Website on Rocky Linux Nodes
+- name: Deploy and Configure Web Servers on Rocky Linux VMs
   hosts: all
   become: yes
-  tasks:
+  vars:
+    # BIND DEFINITION VALUE: Set to 'nginx' or 'httpd' (Apache) as desired
+    web_server_package: nginx
 
-    - name: Install Apache web server package
+  tasks:
+    - name: Ensure the EPEL repository is present (Required for Nginx)
       dnf:
-        name: httpd
+        name: epel-release
+        state: present
+      when: web_server_package == 'nginx'
+
+    - name: Install the designated web server package
+      dnf:
+        name: "{{ web_server_package }}"
         state: present
         update_cache: yes
 
-    - name: Ensure Apache service is enabled on boot and running
+    - name: Start and enable the web server system daemon
       systemd:
-        name: httpd
+        name: "{{ web_server_package }}"
         state: started
         enabled: yes
 
-    - name: Open Firewall rules for HTTP web traffic
+    - name: Configure local firewalld rules for web traffic
       firewalld:
         service: http
         permanent: yes
         state: enabled
         immediate: yes
 
-    - name: Deploy static custom website content
+    - name: Create the base web root layout path if missing
+      file:
+        path: /var/www/html
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: web_server_package == 'nginx'
+
+    - name: Deploy a structural template index webpage asset
       copy:
         content: |
           <!DOCTYPE html>
           <html>
           <head>
-              <title>Welcome to My Rocky Linux Website</title>
+              <title>Rocky Linux Web Node</title>
               <style>
-                  body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; }
-                  h1 { color: #1a52ca; }
+                  body { font-family: Arial, sans-serif; text-align: center; margin-top: 80px; background-color: #eceff4; color: #2e3440; }
+                  h1 { color: #5e81ac; }
+                  .badge { background-color: #81a1c1; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
               </style>
           </head>
           <body>
-              <h1>Success! Your Website is Live.</h1>
-              <p>Managed and Deployed Automatically by Ansible Core.</p>
+              <h1>Automation Success!</h1>
+              <p>Active Engine Web Server Wrapper Instance: <span class="badge">{{ web_server_package | upper }}</span></p>
+              <p>Node Target Hostname: {{ inventory_hostname }}</p>
           </body>
           </html>
-        dest: /var/www/html/index.html
-        owner: apache
-        group: apache
+        dest: "{{ '/usr/share/nginx/html/index.html' if web_server_package == 'nginx' else '/var/www/html/index.html' }}"
         mode: '0644'
+
+    - name: Setup dynamic Nginx routing block patch if package is selected
+      lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: 'root\s+/usr/share/nginx/html;'
+        line: '        root /usr/share/nginx/html; # Managed by Ansible'
+      when: web_server_package == 'nginx'
+      notify: Reload Web Server Daemon
+
+  handlers:
+    - name: Reload Web Server Daemon
+      systemd:
+        name: "{{ web_server_package }}"
+        state: reloaded
