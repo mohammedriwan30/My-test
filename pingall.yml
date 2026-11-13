@@ -1,0 +1,7 @@
+---
+- name: Verify Connectivity to All Inventory Virtual Machines
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Execute Ansible Built-in Ping
+      ansible.builtin.ping:
