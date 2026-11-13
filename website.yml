@@ -1,0 +1,46 @@
+---
+- name: Deploy Apache Website on Rocky Linux Nodes
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Install Apache web server package
+      dnf:
+        name: httpd
+        state: present
+        update_cache: yes
+
+    - name: Ensure Apache service is enabled on boot and running
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Open Firewall rules for HTTP web traffic
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Deploy static custom website content
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Welcome to My Rocky Linux Website</title>
+              <style>
+                  body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; }
+                  h1 { color: #1a52ca; }
+              </style>
+          </head>
+          <body>
+              <h1>Success! Your Website is Live.</h1>
+              <p>Managed and Deployed Automatically by Ansible Core.</p>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+        mode: '0644'
