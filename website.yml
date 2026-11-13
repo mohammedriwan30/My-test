@@ -24,22 +24,13 @@
         state: started
         enabled: yes
 
-    # --- FIX ADDED HERE ---
-    # This ensures the collection containing firewalld is present on the control node
-    - name: Ensure ansible.posix collection is installed locally
-      delegate_to: localhost
-      run_once: true
-      become: no
-      ansible.builtin.command: ansible-galaxy collection install ansible.posix
-
-    # --- FIX ADDED HERE ---
-    # Changed from 'firewalld:' to 'ansible.posix.firewalld:'
-    - name: Configure local firewalld rules for web traffic
-      ansible.posix.firewalld:
-        service: http
-        permanent: yes
-        state: enabled
-        immediate: yes
+    # --- NATIVE FIX: Bypasses the missing collection bug entirely ---
+    - name: Configure local firewalld rules for web traffic via command line
+      command: "{{ item }}"
+      loop:
+        - firewall-cmd --permanent --add-service=http
+        - firewall-cmd --reload
+      changed_when: true
 
     - name: Create the base web root layout path if missing
       file:
