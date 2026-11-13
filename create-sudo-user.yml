@@ -1,0 +1,27 @@
+---
+- name: Create Administrative User Ali on Rocky Linux VMs
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Ensure the wheel group exists
+      ansible.builtin.group:
+        name: wheel
+        state: present
+
+    - name: Create user ali and assign to the wheel administrative group
+      ansible.builtin.user:
+        name: ali
+        shell: /bin/bash
+        groups: wheel
+        append: yes
+        state: present
+        create_home: yes
+
+    - name: Configure visudo rules to allow passwordless sudo for the wheel group
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%wheel\s+ALL=\(ALL\)\s+NOPASSWD:\s+ALL'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
